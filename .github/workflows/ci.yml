@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build, lint and check axioms
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Builds with warnings treated as errors, runs the Batteries linters through `lake lint`,
+      # and replays every declaration of both libraries in the kernel with `leanchecker`.
+      - uses: leanprover/lean-action@v1
+        env:
+          LEAN_NUM_THREADS: "1"
+        with:
+          build-args: "--wfail"
+          lint: "true"
+          leanchecker: "true"
+          leanchecker-args: "Wolstenholme Zolotarev"
+
+      - name: Check the axioms of the headline theorems
+        run: |
+          lake env lean Checks.lean | tee axioms.txt
+          expected=$(grep -c '^#print axioms' Checks.lean)
+          found=$(grep -c 'depends on axioms' axioms.txt)
+          if [ "$expected" -ne "$found" ]; then
+            echo "Expected $expected axiom reports but found $found."
+            exit 1
+          fi
+          allowed='propext|Classical\.choice|Quot\.sound'
+          if grep 'depends on axioms' axioms.txt \
+              | grep -vE "depends on axioms: \[($allowed)(, ($allowed))*\]$"; then
+            echo "A theorem depends on an axiom outside the allowed list."
+            exit 1
+          fi
+
+      - name: Forbid sorry, admit, native_decide, axiom, set_option and unsafe
+        run: |
+          if grep -rnwE 'sorry|admit|native_decide|axiom|set_option|unsafe' \
+              --include='*.lean' Wolstenholme Zolotarev Wolstenholme.lean Zolotarev.lean; then
+            echo "Found a forbidden keyword."
+            exit 1
+          fi
