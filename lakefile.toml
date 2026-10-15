@@ -1,7 +1,7 @@
 name = "wolstenholme_zolotarev"
 version = "0.1.0"
 keywords = ["math", "number theory"]
-defaultTargets = ["Wolstenholme"]
+defaultTargets = ["Wolstenholme", "Zolotarev"]
 lintDriver = "batteries/runLinter"
 
 [leanOptions]
@@ -18,3 +18,6 @@ rev = "v4.35.0"
 
 [[lean_lib]]
 name = "Wolstenholme"
+
+[[lean_lib]]
+name = "Zolotarev"
